@@ -60,7 +60,7 @@ This project uses **Chainlink Runtime Environment (CRE)** to decentralize X API 
 
 ```bash
 # Clone this repo
-git clone https://github.com/YOUR_USERNAME/decentralized-twitter-oracle.git
+git clone https://github.com/bluabaleno/decentralized-twitter-oracle.git
 cd decentralized-twitter-oracle
 
 # Install dependencies
