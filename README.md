@@ -63,10 +63,11 @@ This project uses **Chainlink Runtime Environment (CRE)** to decentralize X API 
 git clone https://github.com/bluabaleno/decentralized-twitter-oracle.git
 cd decentralized-twitter-oracle
 
-# Install dependencies
+# Install dependencies and set up CRE SDK
 bun install
+bun cre-setup
 
-# Configure your X API token
+# Configure your X API token (optional - runs with mock data without it)
 cp workflow/secrets.example.json workflow/secrets.json
 # Edit workflow/secrets.json with your bearer token
 ```

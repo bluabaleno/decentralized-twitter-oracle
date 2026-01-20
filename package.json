@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
+    "cre-setup": "bun node_modules/@chainlink/cre-sdk-javy-plugin/bin/setup.ts",
+    "postinstall": "bun run cre-setup",
     "simulate": "cre workflow simulate ./workflow -T local-simulation"
   },
   "keywords": ["chainlink", "cre", "twitter", "oracle", "decentralized"],
