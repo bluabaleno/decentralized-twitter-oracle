@@ -151,14 +151,24 @@ Edit `workflow/config.json`:
 
 - **5 HTTP calls per workflow** - CRE limit means max 5 search terms
 - **Local simulation uses 2 nodes** - Production DON has 21+ nodes
-- **X API costs** - Each node operator needs their own API access
+- **X API costs** - Each node operator needs their own API access ($200+/month)
+- **No usage attribution** - CRE SDK doesn't currently track which API key made which calls, making it hard to fairly compensate key providers
+
+## Open Questions
+
+**Incentive design** - Why would someone pay $200+/month for an X API key and share it?
+- Fee sharing from protocol revenue?
+- Target entities who already have API access?
+- Cooperative model where multiple projects share costs?
+
+This is the hard problem. The tech works, but the economics need more thought.
 
 ## Next Steps
 
 This is a proof of concept. Future work:
 
 - [ ] Community key pool with encrypted secrets
-- [ ] Incentive mechanism for key providers
+- [ ] Incentive mechanism for key providers (needs CRE usage tracking)
 - [ ] Alternative data sources (Google Search via Gemini, aggregators)
 - [ ] Production deployment on Chainlink mainnet
 
