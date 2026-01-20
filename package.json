@@ -1,0 +1,19 @@
+{
+  "name": "decentralized-twitter-oracle",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "simulate": "cre workflow simulate ./workflow -T local-simulation"
+  },
+  "keywords": ["chainlink", "cre", "twitter", "oracle", "decentralized"],
+  "author": "",
+  "license": "MIT",
+  "description": "Decentralized X (Twitter) API access using Chainlink Runtime Environment",
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.2",
+    "@types/node": "^25.0.9",
+    "typescript": "^5.9.3",
+    "viem": "^2.44.4",
+    "zod": "^4.3.5"
+  }
+}

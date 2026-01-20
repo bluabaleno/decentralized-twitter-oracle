@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Secrets - NEVER commit
+**/secrets.json
+.env
+.env.*
+
+# Build artifacts
+dist/
+*.wasm
+tmp.js
+**/tmp.js
+.cre/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs
+*.log

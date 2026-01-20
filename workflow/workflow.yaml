@@ -1,0 +1,23 @@
+local-simulation:
+  user-workflow:
+    workflow-name: "mentionchk"
+  workflow-artifacts:
+    workflow-path: "./index.ts"
+    config-path: "./config.json"
+    secrets-path: "./secrets.json"
+
+staging-settings:
+  user-workflow:
+    workflow-name: "mentionchk"
+  workflow-artifacts:
+    workflow-path: "./index.ts"
+    config-path: "./config.json"
+    secrets-path: "./secrets.json"
+
+production-settings:
+  user-workflow:
+    workflow-name: "mentionchk"
+  workflow-artifacts:
+    workflow-path: "./index.ts"
+    config-path: "./config.production.json"
+    secrets-path: "./secrets.json"
