@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mention Market - Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        h1 {
+            color: #fff;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #8b949e;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        .diagram-container {
+            background: #0d1117;
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid #30363d;
+            margin-bottom: 1.5rem;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            background: #30363d;
+            color: #fff;
+        }
+        .tab.active {
+            background: #238636;
+            border-color: #3fb950;
+            color: #fff;
+        }
+        .tab.active.purple {
+            background: #8957e5;
+            border-color: #a371f7;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #8b949e;
+            font-size: 0.85rem;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+        .legend-dot.user { background: #58a6ff; }
+        .legend-dot.onchain { background: #3fb950; }
+        .legend-dot.offchain { background: #a371f7; }
+        .legend-dot.external { background: #f85149; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Mention Market</h1>
+    <p class="subtitle">Binary prediction market for X mentions, settled by Chainlink CRE</p>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showDiagram('overview')">Overview</button>
+        <button class="tab" onclick="showDiagram('onchain')">On-Chain Detail</button>
+        <button class="tab purple" onclick="showDiagram('cre')">CRE Workflow Detail</button>
+    </div>
+
+    <div class="diagram-container">
+        <!-- OVERVIEW DIAGRAM -->
+        <div id="diagram-overview" class="mermaid">
+flowchart LR
+    subgraph Users[" "]
+        U1(("👤 Creator"))
+        U2(("👤 Traders"))
+    end
+
+    subgraph Chain["⛓️ ON-CHAIN"]
+        direction TB
+        C1["createMarket()"]
+        C2["buyYes() / buyNo()"]
+        C3["resolveMarket()"]
+        C4["claimWinnings()"]
+        DB[("markets[] positions[]")]
+        KF["Keystone Forwarder"]
+    end
+
+    subgraph CRE["🔮 CHAINLINK CRE"]
+        direction TB
+        T["Trigger"]
+        W1["Read → Query → Consensus"]
+        W2["Sign Report"]
+    end
+
+    subgraph External[" "]
+        X["🐦 X API"]
+    end
+
+    U1 -->|"1️⃣ Create"| C1
+    U2 -->|"2️⃣ Trade"| C2
+    U2 -->|"4️⃣ Claim"| C4
+
+    C1 & C2 & C3 & C4 --- DB
+
+    T --> W1
+    W1 <-->|"query"| X
+    DB -.->|"read"| W1
+    W1 --> W2
+    W2 -->|"3️⃣ Submit"| KF
+    KF --> C3
+
+    classDef user fill:#58a6ff,stroke:#1f6feb,color:#000
+    classDef chain fill:#238636,stroke:#3fb950,color:#fff
+    classDef cre fill:#8957e5,stroke:#a371f7,color:#fff
+    classDef external fill:#da3633,stroke:#f85149,color:#fff
+    classDef db fill:#21262d,stroke:#30363d,color:#c9d1d9
+
+    class U1,U2 user
+    class C1,C2,C3,C4,KF chain
+    class T,W1,W2 cre
+    class X external
+    class DB db
+        </div>
+
+        <!-- ON-CHAIN DETAIL DIAGRAM -->
+        <div id="diagram-onchain" class="mermaid hidden">
+flowchart TB
+    subgraph Contract["MentionMarket.sol"]
+        direction TB
+
+        subgraph Creation["Market Creation"]
+            CM["createMarket(sourceHandle, targetTerm, endTime)"]
+            CM1["require: allowedCreators[msg.sender]"]
+            CM2["marketId = nextMarketId++"]
+            CM3["emit MarketCreated(id, source, term, end)"]
+        end
+
+        subgraph Trading["Trading"]
+            BY["buyYes(marketId) payable"]
+            BN["buyNo(marketId) payable"]
+            T1["require: !resolved"]
+            T2["require: block.timestamp < endTime"]
+            T3["yesPool += msg.value"]
+            T4["positions[id][user].yesAmount += msg.value"]
+            T5["emit PositionTaken(id, user, YES, amount)"]
+        end
+
+        subgraph Resolution["Resolution"]
+            RM["resolveMarket(marketId, outcome)"]
+            R1["require: msg.sender == keystoneForwarder"]
+            R2["require: block.timestamp >= endTime"]
+            R3["require: !markets[id].resolved"]
+            R4["markets[id].resolved = true"]
+            R5["markets[id].outcome = outcome"]
+            R6["emit MarketResolved(id, outcome)"]
+        end
+
+        subgraph Settlement["Settlement"]
+            CW["claimWinnings(marketId)"]
+            S1["require: markets[id].resolved"]
+            S2["require: !positions[id][user].claimed"]
+            S3["payout = userStake / winningPool * totalPool"]
+            S4["transfer(user, payout)"]
+            S5["emit WinningsClaimed(id, user, payout)"]
+        end
+
+        subgraph State["Contract State"]
+            ST1["markets: mapping(uint => Market)"]
+            ST2["positions: mapping(uint => mapping(addr => Position))"]
+            ST3["allowedCreators: mapping(addr => bool)"]
+            ST4["keystoneForwarder: address"]
+        end
+    end
+
+    CM --> CM1 --> CM2 --> CM3
+    BY --> T1 --> T2 --> T3 --> T4 --> T5
+    BN --> T1
+    RM --> R1 --> R2 --> R3 --> R4 --> R5 --> R6
+    CW --> S1 --> S2 --> S3 --> S4 --> S5
+
+    classDef fn fill:#238636,stroke:#3fb950,color:#fff
+    classDef check fill:#b08800,stroke:#d29922,color:#fff
+    classDef action fill:#1f6feb,stroke:#58a6ff,color:#fff
+    classDef event fill:#8957e5,stroke:#a371f7,color:#fff
+    classDef state fill:#21262d,stroke:#30363d,color:#c9d1d9
+
+    class CM,BY,BN,RM,CW fn
+    class CM1,T1,T2,R1,R2,R3,S1,S2 check
+    class CM2,T3,T4,R4,R5,S3,S4 action
+    class CM3,T5,R6,S5 event
+    class ST1,ST2,ST3,ST4 state
+        </div>
+
+        <!-- CRE WORKFLOW DETAIL DIAGRAM -->
+        <div id="diagram-cre" class="mermaid hidden">
+flowchart TB
+    subgraph Trigger["Trigger"]
+        TR1["⏰ Cron: every 5 min"]
+        TR2["📡 API: /resolve?marketId=X"]
+    end
+
+    subgraph Step1["Step 1: Read Chain"]
+        S1A["evmClient.callContract()"]
+        S1B["getMarket(marketId)"]
+        S1C["→ sourceHandle, targetTerm, endTime, resolved"]
+    end
+
+    subgraph Step2["Step 2: Validate"]
+        S2A{"resolved?"}
+        S2B{"now >= endTime?"}
+    end
+
+    subgraph Step3["Step 3: Query X API"]
+        S3A["Build query: from:{handle} {term}"]
+        S3B["Set time bounds"]
+        S3C["httpClient.sendRequest()"]
+    end
+
+    subgraph DON["Chainlink DON (21+ nodes)"]
+        N1["Node 1 🔑"]
+        N2["Node 2 🔑"]
+        N3["Node N 🔑"]
+        API["X API /2/tweets/search/recent"]
+    end
+
+    subgraph Step4["Step 4: Consensus"]
+        S4A["Each node returns result_count"]
+        S4B["consensusMedianAggregation()"]
+        S4C["Agree on count (BFT 2/3)"]
+    end
+
+    subgraph Step5["Step 5: Determine Outcome"]
+        S5A{"count > 0?"}
+        S5B["outcome = true (YES)"]
+        S5C["outcome = false (NO)"]
+    end
+
+    subgraph Step6["Step 6: Generate Report"]
+        S6A["encodeFunctionData(resolveMarket)"]
+        S6B["runtime.report()"]
+        S6C["DON signs report"]
+    end
+
+    subgraph Step7["Step 7: Submit"]
+        S7A["evmClient.writeReport()"]
+        S7B["→ Keystone Forwarder"]
+        S7C["→ MentionMarket.resolveMarket()"]
+    end
+
+    TR1 & TR2 --> S1A
+    S1A --> S1B --> S1C
+    S1C --> S2A
+    S2A -->|"yes"| EXIT1["Exit: already resolved"]
+    S2A -->|"no"| S2B
+    S2B -->|"no"| EXIT2["Exit: not yet ended"]
+    S2B -->|"yes"| S3A
+
+    S3A --> S3B --> S3C
+    S3C --> N1 & N2 & N3
+    N1 & N2 & N3 <--> API
+    N1 & N2 & N3 --> S4A
+
+    S4A --> S4B --> S4C
+    S4C --> S5A
+    S5A -->|"yes"| S5B
+    S5A -->|"no"| S5C
+    S5B & S5C --> S6A
+
+    S6A --> S6B --> S6C
+    S6C --> S7A --> S7B --> S7C
+
+    classDef trigger fill:#b08800,stroke:#d29922,color:#fff
+    classDef step fill:#8957e5,stroke:#a371f7,color:#fff
+    classDef node fill:#1f6feb,stroke:#58a6ff,color:#fff
+    classDef decision fill:#238636,stroke:#3fb950,color:#fff
+    classDef exit fill:#da3633,stroke:#f85149,color:#fff
+
+    class TR1,TR2 trigger
+    class S1A,S1B,S1C,S3A,S3B,S3C,S4A,S4B,S4C,S5B,S5C,S6A,S6B,S6C,S7A,S7B,S7C step
+    class N1,N2,N3,API node
+    class S2A,S2B,S5A decision
+    class EXIT1,EXIT2 exit
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot user"></div>
+            <span>Users</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot onchain"></div>
+            <span>On-Chain</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot offchain"></div>
+            <span>Chainlink CRE</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot external"></div>
+            <span>External API</span>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            flowchart: {
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 40,
+                rankSpacing: 60,
+                htmlLabels: true
+            },
+            themeVariables: {
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                fontSize: '13px',
+                primaryColor: '#238636',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#30363d',
+                lineColor: '#484f58',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#161b22',
+                background: '#0d1117',
+                mainBkg: '#161b22',
+                nodeBorder: '#30363d',
+                clusterBkg: '#161b2280',
+                clusterBorder: '#30363d',
+                titleColor: '#fff',
+                edgeLabelBackground: '#0d1117',
+                nodeTextColor: '#fff'
+            }
+        });
+
+        async function showDiagram(view) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Hide all diagrams
+            document.querySelectorAll('.mermaid').forEach(d => d.classList.add('hidden'));
+
+            // Show selected diagram
+            const diagram = document.getElementById(`diagram-${view}`);
+            diagram.classList.remove('hidden');
+
+            // Re-render if not already rendered
+            if (!diagram.querySelector('svg')) {
+                const content = diagram.textContent;
+                diagram.innerHTML = content;
+                await mermaid.run({ nodes: [diagram] });
+            }
+        }
+
+        // Initial render
+        mermaid.run({ nodes: [document.getElementById('diagram-overview')] });
+    </script>
+</body>
+</html>
